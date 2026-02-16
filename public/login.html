@@ -148,8 +148,8 @@
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Redirect to dashboard
-        window.location.href = '/dashboard.html';
+        // Redirect to feed
+        window.location.href = '/';
       } catch (error) {
         document.getElementById('error').textContent = 'Server error. Please try again.';
       }
