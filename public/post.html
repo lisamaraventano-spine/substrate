@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post - Substrate</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: Georgia, serif;
+      background: #fafafa;
+      line-height: 1.8;
+    }
+    
+    .header {
+      background: white;
+      border-bottom: 1px solid #ddd;
+      padding: 20px;
+    }
+    
+    .header-content {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .logo {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      cursor: pointer;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    
+    .post {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 40px;
+      margin-bottom: 40px;
+    }
+    
+    .post-title {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: #1a1a1a;
+      line-height: 1.2;
+    }
+    
+    .post-meta {
+      color: #666;
+      font-size: 0.95rem;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .post-content {
+      font-size: 1.1rem;
+      color: #1a1a1a;
+      white-space: pre-wrap;
+    }
+    
+    .post-actions {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 20px;
+    }
+    
+    .like-btn {
+      padding: 10px 20px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    
+    .like-btn.liked {
+      background: #ffe0e0;
+      border-color: #ff6b6b;
+    }
+    
+    .comments-section {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 40px;
+    }
+    
+    .comments-title {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+    
+    .comment {
+      padding: 20px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .comment:last-child {
+      border-bottom: none;
+    }
+    
+    .comment-author {
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    
+    .comment-date {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    
+    .comment-content {
+      color: #333;
+    }
+    
+    .comment-form {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 2px solid #ddd;
+    }
+    
+    textarea {
+      width: 100%;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: Georgia, serif;
+      font-size: 1rem;
+      min-height: 100px;
+      margin-bottom: 15px;
+    }
+    
+    .btn {
+      padding: 12px 30px;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <div class="logo" onclick="window.location.href='/'">Substrate</div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="post" id="post">
+      <!-- Post loads here -->
+    </div>
+    
+    <div class="comments-section">
+      <h2 class="comments-title">Comments (<span id="commentCount">0</span>)</h2>
+      
+      <div id="comments">
+        <!-- Comments load here -->
+      </div>
+      
+      <div class="comment-form hidden" id="commentForm">
+        <textarea id="commentText" placeholder="Write a comment..."></textarea>
+        <button class="btn" onclick="postComment()">Post Comment</button>
+      </div>
+      
+      <div id="loginPrompt" class="hidden" style="margin-top: 30px; text-align: center; color: #666;">
+        <a href="/login.html" style="color: #1a1a1a;">Log in</a> to leave a comment
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const user = token ? JSON.parse(localStorage.getItem('user')) : null;
+    const postId = new URLSearchParams(window.location.search).get('id');
+    
+    if (!postId) {
+      window.location.href = '/';
+    }
+    
+    if (user) {
+      document.getElementById('commentForm').classList.remove('hidden');
+    } else {
+      document.getElementById('loginPrompt').classList.remove('hidden');
+    }
+    
+    let liked = false;
+    
+    async function loadPost() {
+      try {
+        const res = await fetch(`/api/posts/${postId}`);
+        const data = await res.json();
+        
+        if (!res.ok) {
+          document.getElementById('post').innerHTML = '<p style="color: red;">Post not found</p>';
+          return;
+        }
+        
+        const date = new Date(data.post.created_at).toLocaleDateString('en-US', {
+          month: 'long', day: 'numeric', year: 'numeric'
+        });
+        
+        document.getElementById('post').innerHTML = `
+          <h1 class="post-title">${data.post.title}</h1>
+          <div class="post-meta">by ${data.post.author_name} · ${date}</div>
+          <div class="post-content">${data.post.content}</div>
+          <div class="post-actions">
+            <button class="like-btn" id="likeBtn" onclick="toggleLike()">
+              ❤️ ${data.post.like_count}
+            </button>
+          </div>
+        `;
+        
+        document.getElementById('commentCount').textContent = data.comments.length;
+        
+        if (data.comments.length === 0) {
+          document.getElementById('comments').innerHTML = '<p style="color: #666;">No comments yet. Be the first!</p>';
+        } else {
+          document.getElementById('comments').innerHTML = data.comments.map(comment => {
+            const commentDate = new Date(comment.created_at).toLocaleDateString('en-US', {
+              month: 'short', day: 'numeric', year: 'numeric'
+            });
+            
+            return `
+              <div class="comment">
+                <div class="comment-author">${comment.author_name}</div>
+                <div class="comment-date">${commentDate}</div>
+                <div class="comment-content">${comment.content}</div>
+              </div>
+            `;
+          }).join('');
+        }
+        
+        if (user) {
+          checkLikeStatus();
+        }
+        
+      } catch (error) {
+        console.error('Error loading post:', error);
+        document.getElementById('post').innerHTML = '<p style="color: red;">Error loading post</p>';
+      }
+    }
+    
+    async function checkLikeStatus() {
+      try {
+        const res = await fetch(`/api/likes/${postId}/status`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        liked = data.liked;
+        
+        if (liked) {
+          document.getElementById('likeBtn').classList.add('liked');
+        }
+      } catch (error) {
+        console.error('Error checking like status:', error);
+      }
+    }
+    
+    async function toggleLike() {
+      if (!user) {
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/likes/${postId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        liked = data.liked;
+        const btn = document.getElementById('likeBtn');
+        
+        if (liked) {
+          btn.classList.add('liked');
+        } else {
+          btn.classList.remove('liked');
+        }
+        
+        // Reload to update count
+        loadPost();
+        
+      } catch (error) {
+        console.error('Error toggling like:', error);
+      }
+    }
+    
+    async function postComment() {
+      const content = document.getElementById('commentText').value.trim();
+      
+      if (!content) {
+        alert('Please write a comment');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/comments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ post_id: postId, content })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          alert(data.error);
+          return;
+        }
+        
+        document.getElementById('commentText').value = '';
+        loadPost(); // Reload to show new comment
+        
+      } catch (error) {
+        console.error('Error posting comment:', error);
+        alert('Error posting comment');
+      }
+    }
+    
+    loadPost();
+  </script>
+</body>
+</html>

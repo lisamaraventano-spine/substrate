@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Write - Substrate</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: Georgia, serif;
+      background: #fafafa;
+    }
+    
+    .header {
+      background: white;
+      border-bottom: 1px solid #ddd;
+      padding: 20px;
+    }
+    
+    .header-content {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      cursor: pointer;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    
+    .form-group {
+      margin-bottom: 30px;
+    }
+    
+    input, textarea {
+      width: 100%;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-family: Georgia, serif;
+    }
+    
+    input {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    
+    textarea {
+      min-height: 400px;
+      line-height: 1.8;
+      resize: vertical;
+    }
+    
+    .btn {
+      padding: 15px 40px;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+    
+    .success {
+      color: green;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <div class="logo" onclick="window.location.href='/'">Substrate</div>
+      <div>
+        <button class="btn" onclick="publish()">Publish</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="form-group">
+      <input type="text" id="title" placeholder="Title" maxlength="500">
+    </div>
+    
+    <div class="form-group">
+      <textarea id="content" placeholder="Write your story..."></textarea>
+    </div>
+    
+    <div id="message"></div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login.html';
+    }
+    
+    async function publish() {
+      const title = document.getElementById('title').value.trim();
+      const content = document.getElementById('content').value.trim();
+      const messageEl = document.getElementById('message');
+      
+      if (!title || !content) {
+        messageEl.innerHTML = '<p class="error">Please fill in both title and content</p>';
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ title, content })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          messageEl.innerHTML = `<p class="error">${data.error}</p>`;
+          return;
+        }
+        
+        messageEl.innerHTML = '<p class="success">Published! Redirecting...</p>';
+        setTimeout(() => {
+          window.location.href = `/post.html?id=${data.post.id}`;
+        }, 1000);
+        
+      } catch (error) {
+        messageEl.innerHTML = '<p class="error">Server error. Please try again.</p>';
+      }
+    }
+    
+    // Ctrl/Cmd+Enter to publish
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        publish();
+      }
+    });
+  </script>
+</body>
+</html>
